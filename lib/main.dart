@@ -1,19 +1,24 @@
 import 'package:flutter/material.dart';
-import 'screens/loading_screen.dart';
+import 'core/theme.dart';
+import 'screens/auth/login_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const FruitApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class FruitApp extends StatelessWidget {
+  const FruitApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Fruit Scanner',
-      home: const LoadingScreen(),
+      theme: ThemeData(
+        scaffoldBackgroundColor: AppColors.background,
+        // Kita terapkan font Inter secara global di sini nanti
+      ),
+      home: const LoginScreen(), // Mulai dari halaman Login
     );
   }
 }
