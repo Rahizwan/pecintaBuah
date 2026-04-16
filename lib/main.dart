@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'core/theme.dart';
-import 'screens/auth/login_screen.dart';
+import 'screens/splash/loading_screen.dart';
 
 void main() {
   runApp(const FruitApp());
@@ -18,7 +18,7 @@ class FruitApp extends StatelessWidget {
         scaffoldBackgroundColor: AppColors.background,
         // Kita terapkan font Inter secara global di sini nanti
       ),
-      home: const LoginScreen(), // Mulai dari halaman Login
+      home: const LoadingScreen(), // Mulai dari halaman Login
     );
   }
 }
