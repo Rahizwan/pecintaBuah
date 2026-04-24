@@ -11,7 +11,6 @@ class HomeScreen extends StatelessWidget {
       body: Stack(
         children: [
           _buildBackground(),
-          
           SafeArea(
             child: Column(
               children: [
@@ -25,6 +24,8 @@ class HomeScreen extends StatelessWidget {
                         _buildScanCard(context),
                         const SizedBox(height: 32),
                         _buildQuickStats(),
+                        const SizedBox(height: 32),
+                        _buildAllTimeStats(),
                         const SizedBox(height: 32),
                         _buildRecentActivity(context),
                         const SizedBox(height: 100),
@@ -191,6 +192,183 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildAllTimeStats() {
+    const int totalScans = 47;
+    const int correctScans = 42;
+    final double accuracy = (correctScans / totalScans) * 100;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.emerald500.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.insights, color: AppColors.emerald500, size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                "All-Time Statistics",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatBox(
+                  "Total Scans",
+                  "$totalScans",
+                  Icons.qr_code_scanner,
+                  AppColors.emerald500,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatBox(
+                  "Correct",
+                  "$correctScans",
+                  Icons.check_circle_outline,
+                  AppColors.cyan500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.emerald500.withOpacity(0.1),
+                  AppColors.cyan500.withOpacity(0.1),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [AppColors.emerald500, AppColors.cyan500],
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.analytics, color: Colors.white, size: 14),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          "Accuracy",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      "${accuracy.toStringAsFixed(2)}%",
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.emerald500,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Stack(
+                  children: [
+                    Container(
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    FractionallySizedBox(
+                      widthFactor: accuracy / 100,
+                      child: Container(
+                        height: 8,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [AppColors.emerald500, AppColors.cyan500],
+                          ),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatBox(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatCard(String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -223,7 +401,7 @@ class HomeScreen extends StatelessWidget {
           children: [
             const Text("Recent Activity", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             TextButton(
-              onPressed: () => Navigator.pushNamed(context, '/history'), // TAMBAHKAN NAVIGASI INI
+              onPressed: () => Navigator.pushNamed(context, '/history'),
               child: const Text("View All", style: TextStyle(color: AppColors.emerald500)),
             ),
           ],
