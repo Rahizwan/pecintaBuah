@@ -1,29 +1,51 @@
+# What The Fruits? - Laporan Dokumentasi Artefak Tugas Besar 1
+
 ## Deskripsi Proyek
-What The Fruits? adalah sistem pemindaian buah berbasis mobile yang mengintegrasikan Flutter untuk antarmuka pengguna, Laravel sebagai penyedia layanan API, serta FastAPI untuk pemrosesan citra menggunakan model Convolutional Neural Network (CNN). Proyek ini dirancang untuk memberikan analisis presisi mengenai jenis buah, tingkat kematangan, dan kadar kesegaran secara real-time.
+Proyek ini merupakan pengembangan aplikasi perangkat bergerak (Mobile Application) sebagai bagian dari Tugas Besar 1 mata kuliah **Aplikasi Perangkat Bergerak**. Aplikasi "What The Fruits?" dirancang untuk membantu pengguna mengidentifikasi jenis dan tingkat kematangan buah menggunakan teknologi AI.
 
-Dokumentasi ini mencatat perkembangan fase pengembangan antarmuka (Frontend) dan memberikan panduan teknis bagi pengembang untuk melakukan replikasi lingkungan kerja.
-
----
-
-## 1. Status Pengembangan Antarmuka (Frontend Progress)
-Seluruh modul antarmuka telah diselesaikan dengan mengimplementasikan prinsip Clean Code, penggunaan High-DPI Vector Icons (Lucide Icons), serta efek visual Glassmorphism.
-
-### Daftar Layar dan Fungsionalitas
-* **Layar Splash & Loading**: Mengelola inisialisasi awal aplikasi dan transisi data sebelum memasuki modul autentikasi.
-* **Modul Autentikasi (Login & Registrasi)**: Implementasi antarmuka untuk manajemen akses pengguna dengan validasi visual yang terstandarisasi.
-* **Dashboard Utama (Home)**: Pusat kendali aplikasi yang mencakup Quick Stats, kartu navigasi pemindaian, dan daftar aktivitas terbaru.
-* **AI Camera Scanner**: Antarmuka pengambilan gambar tingkat lanjut yang dilengkapi dengan:
-    * Animasi scanning overlay untuk indikator proses AI.
-    * Fungsi peralihan kamera (Flip Camera) untuk fleksibilitas penggunaan.
-    * Bingkai fokus (Focus Frame) adaptif.
-* **Layar Hasil Analisis (Result)**: Menampilkan data keluaran AI secara kuantitatif melalui persentase untuk indikator kematangan (Ripeness) dan tingkat kesegaran (Freshness).
-* **Riwayat Pemindaian (History)**: Manajemen data hasil pemindaian sebelumnya yang dilengkapi dengan label status dinamis.
-* **Pusat Notifikasi**: Mengelola pemberitahuan sistem, informasi pembaruan model AI, dan log aktivitas.
-* **Profil Pengguna**: Modul pengaturan akun dengan fitur Toggle Edit Mode untuk pembaruan informasi personal secara dinamis.
+**Institusi:** Telkom University Kampus Surabaya  
+**Program Studi:** S1 Teknologi Informasi  
+**Kelas:** IT06-01
 
 ---
 
-## 2. Panduan Instalasi dan Konfigurasi Sistem
+## Anggota Kelompok
+| Nama | NIM |
+| :--- | :--- |
+| Kadek Gandhi Wahyu Jaya Suastika | 1202230017 |
+| Celia Jovita Carmel | 1202230007 |
+| Aura Salsabilla Hestyastuti | 1202230016 |
+| Rahmadinata Rizki Setiawan | 1202230052 |
+
+---
+
+## Tautan Repositori
+Seluruh kode sumber proyek ini dapat diakses melalui tautan berikut:
+👉 [GitHub Repository - pecintaBuah (revised-FE branch)](https://github.com/Rahizwan/pecintaBuah/tree/revised-FE)
+
+---
+
+## Daftar Kontribusi & Pembagian Tugas
+
+### 1. Kadek Gandhi Wahyu Jaya Suastika (PIC: Core Hardware & Information System)
+* **Implementasi Modul Kamera & Media Picker:** Bertanggung jawab penuh atas integrasi perangkat keras kamera menggunakan *camera plugin* dan fungsionalitas pengunggahan gambar dari galeri lokal (*media picker*) dengan penanganan memori yang optimal.
+* **Pengembangan Fitur Edukasi (Notification & Article):** Merancang dan mengimplementasikan `NotificationScreen` dengan sistem *tab-switcher* dinamis serta `ArticleDetailScreen` yang interaktif untuk menyediakan konten edukasi buah kepada pengguna.
+
+### 2. Aura Salsabilla Hestyastuti (PIC: Authentication & Data Metrics)
+* **Pengembangan Antarmuka Autentikasi:** Menyusun kode antarmuka untuk halaman Login dan Register dengan fokus pada validasi *input* dan *User Experience* (UX) saat proses pendaftaran pengguna.
+* **Implementasi Widget Metrik Akurasi:** Merancang *Dynamic Calculation Card* di halaman utama (Home) yang berfungsi mengkalkulasi dan memvisualisasikan tingkat akurasi sistem berdasarkan data historis pemindaian.
+
+### 3. Rahmadinata Rizki Setiawan (PIC: Project Architecture & User Profile)
+* **Arsitektur Proyek & Manajemen Repositori:** Melakukan inisialisasi repositori Git, mengatur struktur folder proyek mengikuti standar *clean architecture*, serta mengelola alur kerja kolaborasi di GitHub.
+* **Navigasi & Personalisasi:** Mengembangkan halaman Home Dashboard sebagai pusat navigasi utama aplikasi (*Main Navigation*) dan merancang `ProfileScreen` untuk manajemen data personal pengguna.
+
+### 4. Celia Jovita Carmel (PIC: Analytics & Data Persistence)
+* **Visualisasi Hasil Pemindaian (Result Screen):** Mengembangkan antarmuka `ResultScreen` yang bertugas menampilkan metrik hasil analisis AI, informasi nutrisi, dan skor kematangan buah secara komprehensif.
+* **Rekam Jejak Aktivitas (History Screen):** Bertanggung jawab atas pengembangan `HistoryScreen` yang memungkinkan pengguna untuk memantau kembali riwayat pemindaian buah yang pernah dilakukan sebelumnya.
+
+---
+
+## Panduan Instalasi dan Konfigurasi Sistem
 
 ### Prasyarat Sistem
 Untuk memastikan aplikasi berjalan optimal, perangkat pengembang harus memenuhi spesifikasi berikut:
@@ -58,27 +80,3 @@ Untuk memastikan aplikasi berjalan optimal, perangkat pengembang harus memenuhi 
     ```bash
     flutter run
     ```
-
----
-
-## 3. Rencana Pengembangan Selanjutnya (Future Roadmap)
-
-Pengembangan akan dilanjutkan pada fase integrasi logika dan layanan backend:
-
-1.  **Integrasi Layanan Laravel (Backend API)**:
-    * Implementasi JSON Web Token (JWT) untuk sistem autentikasi.
-    * Sinkronisasi database PostgreSQL untuk manajemen riwayat pemindaian dan profil pengguna.
-2.  **Integrasi Layanan FastAPI (AI Engine)**:
-    * Koneksi antara aplikasi mobile dengan server FastAPI melalui protokol HTTP (package: http).
-    * Pengiriman data citra mentah (raw image) untuk diproses oleh model CNN.
-3.  **Implementasi Logika Kamera Real-Time**:
-    * Transisi dari simulasi UI ke pengambilan gambar nyata.
-    * Manajemen penyimpanan file gambar sementara (Cache) sebelum proses unggah.
-
----
-
-**Disusun oleh Tukang Buah Naik Haji:**
-1. Kadek Gandhi Wahyu Jaya Suastika
-2. Celia Jovita Carmel 
-3. Aura Salsabilla Hestyastuti 
-4. Rahmadinata Rizki Setiawan

@@ -15,10 +15,10 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               children: [
                 _buildHeader(context),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
+                  child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildScanCard(context),
@@ -28,7 +28,7 @@ class HomeScreen extends StatelessWidget {
                         _buildAllTimeStats(),
                         const SizedBox(height: 32),
                         _buildRecentActivity(context),
-                        const SizedBox(height: 100),
+                        const SizedBox(height: 20),
                       ],
                     ),
                   ),

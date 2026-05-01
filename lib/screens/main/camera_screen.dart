@@ -235,7 +235,7 @@ class _CameraScreenState extends State<CameraScreen> with SingleTickerProviderSt
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
+          SizedBox(
             width: 280,
             height: 280,
             child: Stack(

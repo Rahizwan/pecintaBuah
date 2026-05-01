@@ -72,7 +72,7 @@ class HistoryScreen extends StatelessWidget {
                         const SizedBox(height: 16),
                         
                         // Loop History Items
-                        ...historyData.map((item) => _buildHistoryCard(context, item)).toList(),
+                        ...historyData.map((item) => _buildHistoryCard(context, item)),
                         const SizedBox(height: 80),
                       ],
                     ),
