@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/app_colors.dart';
+import '../../models/article.dart';
 
 class ArticleDetailScreen extends StatelessWidget {
-  final Map<String, dynamic> article;
+  final Article article;
 
   const ArticleDetailScreen({super.key, required this.article});
 
@@ -34,7 +35,7 @@ class ArticleDetailScreen extends StatelessWidget {
                       ),
                     ),
                     child: Center(
-                      child: Icon(article['icon'], size: 80, color: Colors.white.withOpacity(0.5)),
+                      child: Icon(LucideIcons.bookOpen, size: 80, color: Colors.white.withOpacity(0.5)),
                     ),
                   ),
                   Container(
@@ -50,8 +51,6 @@ class ArticleDetailScreen extends StatelessWidget {
               ),
             ),
           ),
-
-          // Konten Artikel
           SliverToBoxAdapter(
             child: Container(
               padding: const EdgeInsets.all(24),
@@ -66,28 +65,42 @@ class ArticleDetailScreen extends StatelessWidget {
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(color: AppColors.cyan50, borderRadius: BorderRadius.circular(12)),
+                        decoration: BoxDecoration(
+                          color: AppColors.cyan50,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         child: Text(
-                          article['category'].toUpperCase(),
-                          style: const TextStyle(color: AppColors.cyan500, fontWeight: FontWeight.bold, fontSize: 10),
+                          article.tag.toUpperCase(),
+                          style: const TextStyle(
+                            color: AppColors.cyan500,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Icon(LucideIcons.clock, size: 14, color: Colors.grey.shade400),
                       const SizedBox(width: 4),
-                      Text(article['readTime'], style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
+                      Text(
+                        article.readTime,
+                        style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    article['title'],
-                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, height: 1.2),
+                    article.title,
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      height: 1.2,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   const Divider(),
                   const SizedBox(height: 24),
                   Text(
-                    article['desc'] * 5,
+                    article.content,
                     style: const TextStyle(
                       fontSize: 16,
                       color: AppColors.muted,

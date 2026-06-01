@@ -1,9 +1,79 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'package:intl/intl.dart';
 import '../../core/app_colors.dart';
+import '../../services/api_service.dart';
+import '../../services/api_client.dart';
+import '../../services/scan_service.dart';
+import '../../models/app_user.dart';
+import '../../models/scan_result.dart';
+import '../../screens/main/result_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  AppUser? _user;
+  List<ScanResult> _recentScans = [];
+  bool _isLoading = true;
+  String _error = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Refresh data when app comes to foreground
+      _loadData();
+    }
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+      _error = '';
+    });
+
+    try {
+      final user = await ApiService.getUser();
+      List<ScanResult> recentScans = [];
+      try {
+        recentScans = await ScanService.getHistory();
+      } catch (_) {
+        recentScans = [];
+      }
+
+      if (mounted) {
+        setState(() {
+          _user = user;
+          _recentScans = recentScans.take(2).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceFirst('Exception: ', '');
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,23 +85,12 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               children: [
                 _buildHeader(context),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildScanCard(context),
-                        const SizedBox(height: 32),
-                        _buildQuickStats(),
-                        const SizedBox(height: 32),
-                        _buildAllTimeStats(),
-                        const SizedBox(height: 32),
-                        _buildRecentActivity(context),
-                        const SizedBox(height: 20),
-                      ],
-                    ),
-                  ),
+                Expanded(
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator(color: AppColors.emerald500))
+                      : _error.isNotEmpty
+                          ? _buildErrorState()
+                          : _buildContent(context),
                 ),
               ],
             ),
@@ -79,35 +138,34 @@ class HomeScreen extends StatelessWidget {
             border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pushNamed(context, '/profile'),
-                    child: Container(
-                      width: 48, height: 48,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [AppColors.emerald500, Color(0xFF059669)]),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Center(
-                        child: Text("S", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Welcome back,", style: TextStyle(color: AppColors.muted, fontSize: 10, letterSpacing: 1)),
-                      Text("Hello, Rizki! 👋", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ],
-              ),
               GestureDetector(
-                onTap: () => Navigator.pushNamed(context, '/notifications'),
+                onTap: () => Navigator.pushNamed(context, '/profile').then((_) => _loadData()),
+                child: _buildHeaderAvatar(),
+              ),
+              const SizedBox(width: 12),
+               Expanded(
+                 child: Column(
+                   crossAxisAlignment: CrossAxisAlignment.start,
+                   children: [
+                     const Text("Welcome back,", style: TextStyle(color: AppColors.muted, fontSize: 10, letterSpacing: 1)),
+                     Text(
+                       _user != null && _user!.name.isNotEmpty
+                           ? "Hello, ${_user!.name}! 👋"
+                           : _user != null
+                               ? "Hello, ${_user!.displayName}! 👋"
+                               : "Loading...",
+                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                       overflow: TextOverflow.ellipsis,
+                     ),
+                   ],
+                 ),
+               ),
+              GestureDetector(
+                onTap: () async {
+                  await Navigator.pushNamed(context, '/notifications');
+                  _loadData();
+                },
                 child: Container(
                   width: 44, height: 44,
                   decoration: BoxDecoration(
@@ -118,10 +176,11 @@ class HomeScreen extends StatelessWidget {
                     alignment: Alignment.center,
                     children: [
                       const Icon(Icons.notifications_none_outlined, color: AppColors.primary),
-                      Positioned(
-                        top: 12, right: 12,
-                        child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.emerald500, shape: BoxShape.circle)),
-                      )
+                      if ((_user?.unreadNotificationsCount ?? 0) > 0)
+                        Positioned(
+                          top: 12, right: 12,
+                          child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.emerald500, shape: BoxShape.circle)),
+                        )
                     ],
                   ),
                 ),
@@ -129,6 +188,43 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildScanCard(context),
+          const SizedBox(height: 32),
+          _buildQuickStats(),
+          const SizedBox(height: 32),
+          _buildAllTimeStats(),
+          const SizedBox(height: 32),
+          _buildRecentActivity(context),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline, size: 48, color: AppColors.muted),
+          const SizedBox(height: 16),
+          Text(_error),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: _loadData,
+            child: const Text('Retry'),
+          ),
+        ],
       ),
     );
   }
@@ -176,6 +272,16 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildQuickStats() {
+    final scansToday = _user?.scansTodayCount ?? 0;
+    final todayScans = _recentScans.where((s) {
+      return s.createdAt.day == DateTime.now().day &&
+          s.createdAt.month == DateTime.now().month &&
+          s.createdAt.year == DateTime.now().year;
+    }).toList();
+    final lastFruit = todayScans.isNotEmpty
+        ? todayScans.first.fruitType
+        : (_recentScans.isNotEmpty ? _recentScans.first.fruitType : "None yet");
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -183,37 +289,36 @@ class HomeScreen extends StatelessWidget {
         const SizedBox(height: 16),
         Row(
           children: [
-            Expanded(child: _buildStatCard("Scans Today", "05", Icons.bar_chart, AppColors.emerald500)),
+            Expanded(child: _buildStatCard("Scans Today", "$scansToday", Icons.bar_chart, AppColors.emerald500)),
             const SizedBox(width: 16),
-            Expanded(child: _buildStatCard("Last Fruit", "Apel Apple", Icons.apple, AppColors.cyan500)),
+            Expanded(child: _buildStatCard("Last Fruit", lastFruit, Icons.apple, AppColors.cyan500)),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildAllTimeStats() {
-    const int totalScans = 47;
-    const int correctScans = 42;
-    final double accuracy = (correctScans / totalScans) * 100;
+    Widget _buildAllTimeStats() {
+      final totalScans = _user?.totalScans ?? 0;
+      final accuracy = _user?.averageAccuracy ?? 0.0;
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: Colors.grey.shade100),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           Row(
             children: [
               Container(
@@ -245,8 +350,8 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildStatBox(
-                  "Correct",
-                  "$correctScans",
+                  "Accuracy",
+                  "${accuracy.toStringAsFixed(0)}%",
                   Icons.check_circle_outline,
                   AppColors.cyan500,
                 ),
@@ -294,7 +399,7 @@ class HomeScreen extends StatelessWidget {
                       ],
                     ),
                     Text(
-                      "${accuracy.toStringAsFixed(2)}%",
+                      "${accuracy.toStringAsFixed(0)}%",
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -394,6 +499,33 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildRecentActivity(BuildContext context) {
+    if (_recentScans.isEmpty) {
+      return Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("Recent Activity", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              TextButton(
+                onPressed: () => Navigator.pushNamed(context, '/history'),
+                child: const Text("View All", style: TextStyle(color: AppColors.emerald500)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Center(
+            child: Column(
+              children: [
+                Icon(Icons.history, size: 48, color: AppColors.muted.withOpacity(0.3)),
+                const SizedBox(height: 8),
+                const Text("No recent activity", style: TextStyle(color: AppColors.muted)),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       children: [
         Row(
@@ -406,40 +538,103 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
         ),
-        _buildActivityItem("Pisang Banana", "2 mins ago", "89 kcal", "https://images.unsplash.com/photo-1623810836868-057b23aef3aa?w=200"),
-        _buildActivityItem("Jeruk Orange", "1 hour ago", "47 kcal", "https://images.unsplash.com/photo-1663002976076-de02deea5fbe?w=200"),
+        const SizedBox(height: 24),
+        ..._recentScans.map((scan) => _buildActivityItem(context, scan)),
       ],
     );
   }
 
-  Widget _buildActivityItem(String name, String time, String kcal, String imgUrl) {
+  Widget _buildHeaderAvatar() {
+    final photoPath = _user?.profilePhotoPath;
+    if (photoPath != null && photoPath.isNotEmpty) {
+      final url = '${ApiClient.baseUrl}/storage/$photoPath';
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Image.network(url, width: 48, height: 48, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _buildInitialsAvatar()),
+      );
+    }
+    return _buildInitialsAvatar();
+  }
+
+  Widget _buildInitialsAvatar() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+      width: 48, height: 48,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade100),
+        gradient: const LinearGradient(colors: [AppColors.emerald500, Color(0xFF059669)]),
+        borderRadius: BorderRadius.circular(16),
       ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Image.network(imgUrl, width: 60, height: 60, fit: BoxFit.cover),
+      child: Center(
+        child: Text(
+          _user != null ? _user!.name.substring(0, 1).toUpperCase() : "U",
+          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActivityItem(BuildContext context, ScanResult scan) {
+    return GestureDetector(
+      onTap: () {
+        // Navigate to result screen with this scan result
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ResultScreen(result: scan),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                Text("$time · $kcal", style: const TextStyle(color: AppColors.muted, fontSize: 13)),
-              ],
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade100),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: scan.imageUrl.isNotEmpty
+                  ? Image.network(scan.imageUrl, width: 60, height: 60, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => _buildSmallPlaceholder())
+                  : _buildSmallPlaceholder(),
             ),
-          ),
-          const Icon(Icons.chevron_right, color: Colors.grey),
-        ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(scan.fruitType, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text("${_formatTimeAgo(scan.createdAt)} · ${(scan.confidenceFruitType * 100).toStringAsFixed(0)}% match", style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.grey),
+          ],
+        ),
       ),
+    );
+  }
+
+  String _formatTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inMinutes < 60) {
+      return "${difference.inMinutes}m ago";
+    } else if (difference.inHours < 24) {
+      return "${difference.inHours}h ago";
+    } else {
+      return DateFormat('MMM d').format(dateTime);
+    }
+  }
+
+  Widget _buildSmallPlaceholder() {
+    return Container(
+      width: 60,
+      height: 60,
+      color: AppColors.gray100,
+      child: const Icon(Icons.image, color: AppColors.muted, size: 20),
     );
   }
 
@@ -460,7 +655,7 @@ class HomeScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _buildNavItem(Icons.home_filled, "HOME", true),
-                const SizedBox(width: 40), 
+                const SizedBox(width: 40),
                 GestureDetector(
                   onTap: () => Navigator.pushNamed(context, '/history'),
                   child: _buildNavItem(Icons.history, "HISTORY", false),

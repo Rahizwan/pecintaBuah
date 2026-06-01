@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'dart:ui';
 import '../../core/app_colors.dart';
+import '../../services/scan_service.dart';
 import 'package:camera/camera.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../widgets/notification_popup.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -12,14 +16,17 @@ class CameraScreen extends StatefulWidget {
 }
 
 class _CameraScreenState extends State<CameraScreen> with SingleTickerProviderStateMixin {
-  // Logic Camera
   CameraController? _controller;
   List<CameraDescription>? _cameras;
   int _selectedCameraIndex = 0;
   bool _isCameraInitialized = false;
+  bool _isProcessing = false;
+
+  final ImagePicker _picker = ImagePicker();
 
   late AnimationController _scanController;
   late Animation<double> _scanAnimation;
+  bool _hasShownLimitNotice = false;
 
   @override
   void initState() {
@@ -32,41 +39,77 @@ class _CameraScreenState extends State<CameraScreen> with SingleTickerProviderSt
     )..repeat(reverse: true);
 
     _scanAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(_scanController);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_hasShownLimitNotice) {
+        _hasShownLimitNotice = true;
+        NotificationPopup.show(
+          overlay: Overlay.of(context, rootOverlay: true),
+          title: 'Informasi Fitu Terbatas',
+          body: 'Silahkan scan diantara buah berikut: Apel, Jeruk, dan Pisang',
+          type: 'limited',
+        );
+      }
+    });
   }
 
   Future<void> _initializeCamera() async {
-    _cameras = await availableCameras();
+    try {
+      _cameras = await availableCameras();
+    } catch (e) {
+      debugPrint("Gagal mendapatkan daftar kamera: $e");
+      if (mounted) {
+        NotificationPopup.show(
+          overlay: Overlay.of(context, rootOverlay: true),
+          title: 'Gagal Kamera',
+          body: 'Tidak dapat mengakses kamera. Periksa izin atau restart aplikasi.',
+          type: 'error',
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
     if (_cameras != null && _cameras!.isNotEmpty) {
       _onNewCameraSelected(_cameras![_selectedCameraIndex]);
     }
   }
 
   Future<void> _onNewCameraSelected(CameraDescription cameraDescription) async {
-    if (_controller != null) {
-      await _controller!.dispose();
+    final previousController = _controller;
+    if (previousController != null) {
+      await previousController.dispose();
     }
 
-    _controller = CameraController(
+    final controller = CameraController(
       cameraDescription,
       ResolutionPreset.high,
       enableAudio: false,
     );
+    _controller = controller;
 
     try {
-      await _controller!.initialize();
+      await controller.initialize();
+      if (!mounted || _controller != controller) {
+        await controller.dispose();
+        return;
+      }
+      setState(() => _isCameraInitialized = true);
     } catch (e) {
       debugPrint("Error inisialisasi kamera: $e");
-    }
-
-    if (mounted) {
-      setState(() {
-        _isCameraInitialized = true;
-      });
+      if (mounted) {
+        NotificationPopup.show(
+          overlay: Overlay.of(context, rootOverlay: true),
+          title: 'Gagal Kamera',
+          body: 'Tidak dapat menginisialisasi kamera. Coba restart aplikasi.',
+          type: 'error',
+        );
+      }
     }
   }
 
   // Logika Flip Camera
   void _switchCamera() {
+    if (_isProcessing) return;
     if (_cameras == null || _cameras!.length < 2) return;
 
     setState(() {
@@ -84,12 +127,63 @@ class _CameraScreenState extends State<CameraScreen> with SingleTickerProviderSt
     super.dispose();
   }
 
-  void _handleCapture() {
-    Navigator.pushNamed(context, '/result');
+  Future<void> _handleCapture() async {
+    if (_isProcessing) return;
+    if (_controller == null || !_controller!.value.isInitialized) return;
+
+    setState(() => _isProcessing = true);
+
+    try {
+      final XFile image = await _controller!.takePicture();
+      final File imageFile = File(image.path);
+
+      final result = await ScanService.previewImage(imageFile);
+
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/result', arguments: result);
+      }
+    } catch (e) {
+      if (mounted) {
+        NotificationPopup.show(
+          overlay: Overlay.of(context, rootOverlay: true),
+          title: 'Gagal Scan',
+          body: 'Scan gagal: ${e.toString().replaceFirst('Exception: ', '')}',
+          type: 'error',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
   }
 
-  void _handleUpload() {
-    Navigator.pushNamed(context, '/result');
+  Future<void> _handleUpload() async {
+    setState(() => _isProcessing = true);
+
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+      if (image != null) {
+        final File imageFile = File(image.path);
+        final result = await ScanService.previewImage(imageFile);
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/result', arguments: result);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        NotificationPopup.show(
+          overlay: Overlay.of(context, rootOverlay: true),
+          title: 'Gagal Upload',
+          body: 'Upload gagal: ${e.toString().replaceFirst('Exception: ', '')}',
+          type: 'error',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
   }
 
   @override
@@ -309,31 +403,35 @@ class _CameraScreenState extends State<CameraScreen> with SingleTickerProviderSt
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildSideButton(LucideIcons.image, _handleUpload),
+          _buildSideButton(LucideIcons.image, _isProcessing ? null : _handleUpload),
           GestureDetector(
-            onTap: _handleCapture,
+            onTap: _isProcessing ? null : _handleCapture,
             child: Container(
               width: 80,
               height: 80,
               padding: const EdgeInsets.all(6),
-              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(colors: [AppColors.emerald500, AppColors.cyan500]),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.camera, color: Colors.white, size: 32),
+              decoration: BoxDecoration(
+                color: _isProcessing ? Colors.grey.shade300 : Colors.white,
+                shape: BoxShape.circle,
               ),
+              child: _isProcessing
+                  ? const Center(child: SizedBox(width: 32, height: 32, child: CircularProgressIndicator(strokeWidth: 3)))
+                  : Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(colors: [AppColors.emerald500, AppColors.cyan500]),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.camera, color: Colors.white, size: 32),
+                    ),
             ),
           ),
-          // Mengganti spacer dengan button kosong untuk menjaga alignment
           const SizedBox(width: 60),
         ],
       ),
     );
   }
 
-  Widget _buildSideButton(IconData icon, VoidCallback onTap) {
+  Widget _buildSideButton(IconData icon, VoidCallback? onTap) {
     return GestureDetector(
       onTap: onTap,
       child: ClipRRect(

@@ -2,9 +2,59 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/app_colors.dart';
+import '../../models/scan_result.dart';
+import '../../services/scan_service.dart';
+import '../../widgets/notification_popup.dart';
 
-class ResultScreen extends StatelessWidget {
-  const ResultScreen({super.key});
+class ResultScreen extends StatefulWidget {
+  final ScanResult result;
+
+  const ResultScreen({super.key, required this.result});
+
+  @override
+  State<ResultScreen> createState() => _ResultScreenState();
+}
+
+class _ResultScreenState extends State<ResultScreen> {
+   bool _isSaving = false;
+
+  Future<void> _saveAndNavigate(String route) async {
+    if (widget.result.isPreview) {
+      setState(() => _isSaving = true);
+      try {
+        final result = await ScanService.confirmScan(widget.result.toConfirmJson());
+        final newNotifications = result['new_notifications'] as List<dynamic>? ?? [];
+
+        if (mounted) {
+          final overlay = Overlay.of(context, rootOverlay: true);
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            route == '/camera' ? '/camera' : '/home',
+            (r) => r == '/home',
+          );
+          if (newNotifications.isNotEmpty) {
+            NotificationPopup.showMultiple(
+              overlay: overlay,
+              notifications: newNotifications.cast<Map<String, dynamic>>(),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          NotificationPopup.show(
+            overlay: Overlay.of(context, rootOverlay: true),
+            title: 'Gagal Menyimpan',
+            body: 'Gagal menyimpan scan: ${e.toString().replaceFirst('Exception: ', '')}',
+            type: 'error',
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isSaving = false);
+      }
+    } else {
+      Navigator.pushNamed(context, route);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +77,7 @@ class ResultScreen extends StatelessWidget {
                         const SizedBox(height: 16),
                         _buildRipenessCard(),
                         const SizedBox(height: 16),
-                        _buildFreshnessCard(), 
+                        _buildFreshnessCard(),
                         const SizedBox(height: 32),
                         _buildActionButtons(context),
                       ],
@@ -106,8 +156,15 @@ class ResultScreen extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(32),
             child: Image.network(
-              "https://images.unsplash.com/photo-1757283961570-f6b9019753e9?w=800",
+              widget.result.imageUrl.isNotEmpty ? widget.result.imageUrl : "https://images.unsplash.com/photo-1757283961570-f6b9019753e9?w=800",
               height: 300, width: double.infinity, fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  height: 300,
+                  color: AppColors.gray100,
+                  child: const Center(child: Icon(Icons.image_not_supported, size: 48, color: AppColors.muted)),
+                );
+              },
             ),
           ),
           Positioned(
@@ -147,13 +204,13 @@ class ResultScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Column(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("FRUIT TYPE", style: TextStyle(color: AppColors.muted, fontSize: 10, letterSpacing: 1, fontWeight: FontWeight.bold)),
-              SizedBox(height: 4),
-              Text("Apple", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-              Text("Malus domestica", style: TextStyle(color: AppColors.muted, fontSize: 12, fontStyle: FontStyle.italic)),
+              const Text("FRUIT TYPE", style: TextStyle(color: AppColors.muted, fontSize: 10, letterSpacing: 1, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Text(widget.result.fruitType.isNotEmpty ? widget.result.fruitType : "Unknown", style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+              Text("${(widget.result.confidenceFruitType * 100).toStringAsFixed(1)}% confidence", style: const TextStyle(color: AppColors.muted, fontSize: 12)),
             ],
           ),
           Container(
@@ -182,12 +239,12 @@ class ResultScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("RIPENESS STATUS", style: TextStyle(color: AppColors.muted, fontSize: 10, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 4),
-                  Text("Ripe", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                  const Text(                "RIPENESS STATUS", style: TextStyle(color: AppColors.muted, fontSize: 10, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text(widget.result.ripenessStatus.isNotEmpty ? widget.result.ripenessStatus : "Unknown", style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                 ],
               ),
               Container(
@@ -200,18 +257,18 @@ class ResultScreen extends StatelessWidget {
                   children: [
                     Icon(LucideIcons.circleCheck, color: Colors.white, size: 16),
                     const SizedBox(width: 8),
-                    const Text("Perfect", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                    Text("${(widget.result.confidenceRipenessStatus * 100).toStringAsFixed(0)}%", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
                   ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 20),
-          _buildProgressBar(0.85, [AppColors.emerald500, AppColors.cyan500]),
+          _buildProgressBar(widget.result.confidenceRipenessStatus, [AppColors.emerald500, AppColors.cyan500]),
           const SizedBox(height: 8),
-          const Align(
+          Align(
             alignment: Alignment.centerLeft,
-            child: Text("85% optimal ripeness", style: TextStyle(color: AppColors.muted, fontSize: 12)),
+            child: Text("${(widget.result.confidenceRipenessStatus * 100).toStringAsFixed(1)}% optimal ripeness", style: const TextStyle(color: AppColors.muted, fontSize: 12)),
           ),
         ],
       ),
@@ -242,7 +299,7 @@ class ResultScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  const Text("High", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                  Text(widget.result.freshnessLevel.isNotEmpty ? widget.result.freshnessLevel : "Unknown", style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                 ],
               ),
               Container(
@@ -256,12 +313,11 @@ class ResultScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          // Menggunakan progress bar biru-cyan untuk membedakan dari Ripeness
-          _buildProgressBar(0.92, [Colors.cyan.shade400, Colors.blue.shade400]),
+          _buildProgressBar(widget.result.confidenceFreshnessLevel, [Colors.cyan.shade400, Colors.blue.shade400]),
           const SizedBox(height: 8),
-          const Align(
+          Align(
             alignment: Alignment.centerLeft,
-            child: Text("92% freshness detected", style: TextStyle(color: AppColors.muted, fontSize: 12)),
+            child: Text("${(widget.result.confidenceFreshnessLevel * 100).toStringAsFixed(1)}% freshness detected", style: const TextStyle(color: AppColors.muted, fontSize: 12)),
           ),
         ],
       ),
@@ -278,7 +334,7 @@ class ResultScreen extends StatelessWidget {
       ),
       child: FractionallySizedBox(
         alignment: Alignment.centerLeft,
-        widthFactor: factor,
+        widthFactor: factor.clamp(0.0, 1.0),
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(colors: colors),
@@ -307,9 +363,11 @@ class ResultScreen extends StatelessWidget {
             boxShadow: [BoxShadow(color: AppColors.emerald500.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
           ),
           child: ElevatedButton.icon(
-            onPressed: () => Navigator.pushReplacementNamed(context, '/history'),
-            icon: const Icon(LucideIcons.save, size: 20, color: Colors.white),
-            label: const Text("Save to History", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+            onPressed: _isSaving ? null : () => _saveAndNavigate('/history'),
+            icon: _isSaving
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(LucideIcons.save, size: 20, color: Colors.white),
+            label: Text(_isSaving ? "Saving..." : "Save to History", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent),
           ),
         ),
@@ -317,8 +375,10 @@ class ResultScreen extends StatelessWidget {
         SizedBox(
           width: double.infinity, height: 56,
           child: OutlinedButton.icon(
-            onPressed: () => Navigator.pushReplacementNamed(context, '/camera'),
-            icon: const Icon(LucideIcons.scan, size: 20, color: AppColors.primary),
+            onPressed: _isSaving ? null : () => _saveAndNavigate('/camera'),
+            icon: _isSaving
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(LucideIcons.scan, size: 20, color: AppColors.primary),
             label: const Text("Scan Another", style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 16)),
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: AppColors.gray200, width: 2),

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
+import '../../services/api_client.dart';
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
@@ -24,9 +25,14 @@ class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProvider
     _animation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _controller.forward();
 
-    Timer(const Duration(seconds: 3), () {
+    Timer(const Duration(seconds: 2), () async {
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/login');
+        final isAuthenticated = await ApiClient.isAuthenticated();
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          isAuthenticated ? '/home' : '/login',
+          (route) => false,
+        );
       }
     });
   }

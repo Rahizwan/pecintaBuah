@@ -9,6 +9,8 @@ import 'screens/main/history_screen.dart';
 import 'screens/main/result_screen.dart';
 import 'screens/main/profile_screen.dart';
 import 'screens/main/notifications_screen.dart';
+import 'screens/main/achievements_screen.dart';
+import 'models/scan_result.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,18 +25,27 @@ class WhatTheFruitsApp extends StatelessWidget {
     return MaterialApp(
       title: 'What The Fruits',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light, 
+      theme: AppTheme.light,
       initialRoute: '/loading',
       routes: {
         '/loading': (context) => const LoadingScreen(),
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
         '/home': (context) => const HomeScreen(),
-        '/camera': (context) => const CameraScreen(), 
+        '/camera': (context) => const CameraScreen(),
         '/history': (context) => const HistoryScreen(),
-        '/result': (context) => const ResultScreen(),
         '/profile': (context) => const ProfileScreen(),
         '/notifications': (context) => const NotificationScreen(),
+        '/achievements': (context) => const AchievementsScreen(),
+      },
+      onGenerateRoute: (settings) {
+        if (settings.name == '/result') {
+          final result = settings.arguments as ScanResult;
+          return MaterialPageRoute(
+            builder: (context) => ResultScreen(result: result),
+          );
+        }
+        return null;
       },
     );
   }

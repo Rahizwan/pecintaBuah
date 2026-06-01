@@ -3,6 +3,7 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <application
+        android:usesCleartextTraffic="true"
         android:label="flutter_fruit_scan_w_ai"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
