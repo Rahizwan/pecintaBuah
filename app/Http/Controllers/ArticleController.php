@@ -1,0 +1,21 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Article;
+use Illuminate\Http\Request;
+
+class ArticleController extends Controller
+{
+    public function index()
+    {
+        $articles = Article::all(['id', 'tag', 'title', 'read_time']);
+
+        return response()->json($articles);
+    }
+
+    public function show(Article $article)
+    {
+        return response()->json($article);
+    }
+}
